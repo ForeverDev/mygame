@@ -17,13 +17,10 @@ class Node {
 		int index = 0;
 		
 		virtual ~Node() {};
-		virtual void render_to_array(vector<vector<Colored_Pixel>>&) = 0;
 
 	private:
 
 	protected:
-		static void safe_char_put(vector<vector<Colored_Pixel>>&, int, int, const Color_Pair&, char);
-		static void safe_string_put(vector<vector<Colored_Pixel>>&, int, int, const Color_Pair&, const string&);
 
 };
 

@@ -1,38 +1,82 @@
 #include <iostream>
-#include <algorithm>
-#include "town_hall.h"
 #include "game.h"
 
-Game_State::Game_State() {
-	
-	// initialize screen
-	screen = vector<vector<Colored_Pixel>>(SCREEN_X);
-	for (int i = 0; i < SCREEN_X; i++) {
-		screen[i] = vector<Colored_Pixel>(SCREEN_Y);
-		for (int j = 0; j < SCREEN_Y; j++) {
-			Colored_Pixel pixel;
-			pixel.c = UNKNOWN_DRAW_CHAR;
-			pixel.color.foreground = FORE_WHITE;
-			pixel.color.background = BACK_BLACK;
-			screen[i][j] = move(pixel);
+// text frame implementation.....
+Text_Frame::Text_Frame(int _sx, int _sy) {
+	sx = _sx;
+	sy = _sy;
+
+	pixels = vector<vector<Colored_Pixel>>(_sx);
+	for (int i = 0; i < _sx; i++) {
+		pixels[i] = vector<Colored_Pixel>(_sy);
+		for (int j = 0; j < _sy; j++) {
+			pixels[i][j].c = ' ';
+			pixels[i][j].color = const_color::WHITE;
 		}
 	}
+}
 
-	// set default colors
-	set_foreground(FORE_WHITE);
-	set_background(BACK_BLACK);	
+void
+Text_Frame::put_string(int x, int y, const string& str, const Color_Pair& color) {
+	for (int i = 0; i < str.length(); i++) {
+		if (x >= sx) {
+			x = 0;
+			y++;
+		}
+		if (y >= sy) {
+			return;
+		}
+		pixels[x][y].c = str[i];
+		pixels[x][y].color = color;
+		x++;
+	}
+}
 
-	auto town = make_shared<Town_Hall>();
-	town->x = 5;
-	town->y = 6;
-	town->selection_index = 1;
-	add_node(town);
+void
+Text_Frame::put_char(int x, int y, char c, const Color_Pair& color) {
+	if (x < 0 || x >= sx || y < 0 || y >= sy) {
+		return;
+	}
+	pixels[x][y].c = c;
+	pixels[x][y].color = color;	
+}
 
-	auto town2 = make_shared<Town_Hall>();
-	town2->x = 8;
-	town2->y = 13;
-	town2->selection_index = 2;
-	add_node(town2);
+void
+Text_Frame::fill(char c) {
+	for (auto& pixel_row: pixels) {
+		for (auto& pixel: pixel_row) {
+			pixel.c = c;
+		}
+	}
+}
+
+void
+Text_Frame::draw() {
+	
+	for (int i = 0; i < sy; i++) {
+		for (int j = 0; j < sx; j++) {
+// colors only supported for OSX
+#ifdef __APPLE__
+			cout << "\x1b[" << pixels[j][i].color.foreground << "m";
+			cout << "\x1b[" << pixels[j][i].color.background << "m";
+#endif
+			cout << pixels[j][i].c << ' '; 
+		}
+		cout << endl;
+	}
+
+}
+
+// game state implementation.....
+Game_State::Game_State() {
+
+	screen = make_unique<Text_Frame>(SCREEN_X, SCREEN_Y);
+	frame  = make_unique<Text_Frame>(FRAME_X, FRAME_Y);
+
+	screen->fill('.');
+	screen->put_string(0, 0, "hello", const_color::WHITE);
+	frame->fill('~');
+
 
 }
 
@@ -44,51 +88,14 @@ Game_State::~Game_State() {
 }
 
 void
-Game_State::set_foreground(Foreground_Color color) {
-	current_color.foreground = color;
-	cout << "\x1b[" << static_cast<int>(color) << "m";
-}
-
-void
-Game_State::set_background(Background_Color color) {
-	current_color.background = color;
-	cout << "\x1b[" << static_cast<int>(color) << "m";
-}
-
-void
-Game_State::push_colors() {
-	color_stack.push_back(current_color);	
-}
-
-void
-Game_State::pop_colors() {
-	if (color_stack.size() == 0) {
-		return;
-	}
-	const auto& pop = color_stack.back();
-	set_foreground(pop.foreground);
-	set_background(pop.background);
-	color_stack.pop_back();
-}
-
-void
 Game_State::reset_screen() {
-	for (int i = 0; i < SCREEN_X; i++) {
-		for (int j = 0; j < SCREEN_Y; j++) {
-			screen[i][j].c = ' ';
-		}
-	}
 }
 
 void
 Game_State::render() {
-	
-	std::sort(nodes.begin(), nodes.end(), [](shared_ptr<Node> a, shared_ptr<Node> b) -> bool {
-		return a->index < b->index;
-	});
 
-	for (auto& node: nodes) {
-		node->render_to_array(screen);
+	for (auto& user: users) {
+		user->make_move(this);
 	}
 
 }
@@ -96,14 +103,8 @@ Game_State::render() {
 void
 Game_State::draw() {
 
-	for (int i = 0; i < SCREEN_Y; i++) {
-		for (int j = 0; j < SCREEN_X; j++) {
-			set_foreground(screen[j][i].color.foreground);
-			set_background(screen[j][i].color.background);
-			cout << screen[j][i].c << ' ';
-		}
-		cout << endl;
-	}
+	screen->draw();
+	frame->draw();
 	
 }
 
@@ -113,27 +114,4 @@ Game_State::handle_input() {
 	string input;
 	cin >> input;
 	
-	auto nodes = get_nodes(5, 6);
-	static_cast<Town_Hall *>(nodes[0])->selection_grabbed(this);
-
-}
-
-void
-Game_State::add_node(const shared_ptr<Node>& node) {
-	nodes.push_back(node);
-}
-
-vector<Node *>
-Game_State::get_nodes(int x, int y) const {
-
-	vector<Node *> found;
-
-	for (auto& node: nodes) {
-		if (node->x == x && node->y == y) {
-			found.push_back(node.get());
-		}
-	}
-
-	return found;
-
 }

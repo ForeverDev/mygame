@@ -3,39 +3,49 @@
 
 #include <memory>
 #include <vector>
-#include "node.h"
 #include "color.h"
+#include "user.h"
 
 using namespace std;
+
+struct Text_Frame {
+	int sx;
+	int sy;
+	int border;
+	char border_char;
+	vector<vector<Colored_Pixel>> pixels;
+
+	Text_Frame(int, int);
+	void put_string(int, int, const string&, const Color_Pair&);
+	void put_char(int, int, char, const Color_Pair&);
+	void fill(char);
+	void draw();
+};
 
 class Game_State {
 
 	public:
-		static const int SCREEN_X = 40;
-		static const int SCREEN_Y = 40;
+		const int SCREEN_X = 40;
+		const int SCREEN_Y = 40;
+		const int FRAME_X = SCREEN_X;
+		const int FRAME_Y = 20;
 		
-		vector<vector<Colored_Pixel>> screen;		
-		
+		unique_ptr<Text_Frame> screen;
+		unique_ptr<Text_Frame> frame;
+			
 		Game_State();
 		~Game_State();
 		void render();
 		void draw();
 		void handle_input();
 		void reset_screen();
-		void add_node(const shared_ptr<Node>&);
-		vector<Node *> get_nodes(int, int) const;
 
 	private:
 		
 		static const char UNKNOWN_DRAW_CHAR = '.';
-		vector<shared_ptr<Node>> nodes;
+		vector<unique_ptr<User>> users;
 		vector<Color_Pair> color_stack;
 		Color_Pair current_color;
-
-		void set_foreground(Foreground_Color);
-		void set_background(Background_Color);
-		void push_colors();
-		void pop_colors();
 
 };
 
